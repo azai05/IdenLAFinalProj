@@ -1,0 +1,134 @@
+---
+title: "HomelessInLA"
+output: html_document
+date: "2024-05-01"
+---
+
+```{r}
+library(tidyverse)
+homelessness <- read.csv(file = "/Users/ameliazai/Downloads/Homeless_Counts_2020.csv")
+head(homeless)
+homeless$percent_unsheltered <- with(homeless, (Total_Unsheltered_Pop / Total_Pop)*100)
+names(homeless)[2] <- "csa"
+homeless
+homeless$CSA_Label <- as.factor(homeless$CSA_Label)
+poverty <- read.csv(file = "/Users/ameliazai/Downloads/Below_Poverty_tract_7959652566936946184.csv")
+data <- inner_join(homeless, poverty, by = "csa")
+
+sum(data$Total_Unsheltered_Pop) / sum(data$Total_Pop)
+```
+
+```{r}
+homelessness24 <- read.csv("/Users/ameliazai/Downloads/Persons_Experiencing_Homelessness_-7882855703684999173.csv")
+
+names(homelessness24)[4] <- "csa"
+data <- inner_join(homelessness24, poverty, by = "csa")
+for (i in 1:length(data$Estimated.Number.of.Persons.Experiencing.Homelessness)) {
+  if (is.na(data$Estimated.Number.of.Persons.Experiencing.Homelessness[i])) {
+    data$Estimated.Number.of.Persons.Experiencing.Homelessness[i] <- "N"
+  } else {
+    data$Estimated.Number.of.Persons.Experiencing.Homelessness[i] <- "Y"
+  }
+}
+
+data$below_fpl_pct
+
+t.test(data$Estimated.Number.of.Persons.Experiencing.Homelessness, data$below_fpl_pc, alternative = "")
+library(ggplot2)
+
+# Create the boxplot
+histoFPL <- ggplot(data, aes(x = Estimated.Number.of.Persons.Experiencing.Homelessness, y = below_fpl_pct)) +
+  geom_boxplot() +
+  labs(x = "Missing Data for Homeless People", y = "Below FPL Percentage") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ggtitle("Below FPL Percentage by Missing Data for Homeless People")
+
+# save the boxplot into a png 
+ggsave("histoFPL.png")
+
+
+# Subset the data for cities with and without missing data
+cities_with_missing_data <- subset(data, Estimated.Number.of.Persons.Experiencing.Homelessness == "Y")
+table(data$Estimated.Number.of.Persons.Experiencing.Homelessness)
+cities_without_missing_data <- subset(data, Estimated.Number.of.Persons.Experiencing.Homelessness == "N")
+
+# Run the t-test
+wilcox.test(cities_with_missing_data$below_fpl_pct, cities_without_missing_data$below_fpl_pct)
+
+# Print the result
+print(t_test_result)
+
+
+ggplot(data, aes(x = missing_homelessness, y = below_fpl_pct)) +
+  geom_boxplot() +
+  labs(x = "Missing Data for Homeless People", y = "Below FPL Percentage") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ggtitle("Below FPL Percentage by Missing Data for Homeless People")
+
+
+# there is a statistically significant difference in below fpl % between the two populations (cities with missing data and cities without)
+
+
+#  data[is.na(data$Estimated.Number.of.Persons.Experiencing.Homelessness),]
+
+tapply(homelessness24$Estimated.Number.of.Persons.Experiencing.Homelessness, homelessness24$csa, median)
+```
+
+
+```{r}
+data$csa <- as.factor(data$csa)
+tapply(data$below_fpl, data$csa, median)
+tapply(data$Total_Unsheltered_Pop, data$csa, median)
+
+summary(lm(Estimated.Number.of.Persons.Experiencing.Homelessness~below_fpl_pct, data = data))
+hist(data$Estimated.Number.of.Persons.Experiencing.Homelessness, data$below_fpl_pct)
+```
+```{r}
+-382.37 -139.91 -60.56 +  63.89 + 656.04 
+```
+
+
+
+```{r}
+library(tidyverse)
+
+# Load the datasets
+
+# Rename columns for consistency
+names(homelessness24)[names(homelessness24) == "CSA_Label"] <- "csa"
+
+# Merge datasets by 'csa'
+data <- inner_join(homelessness24, poverty, by = "csa")
+
+# Replace NA with logical values for missing data
+data$missing_homelessness <- ifelse(is.na(data$Estimated.Number.of.Persons.Experiencing.Homelessness), "N", "Y")
+data$missing_homelessness <- as.factor(data$missing_homelessness)
+
+# Subset the data for cities with and without missing data
+cities_with_missing_data <- subset(data, missing_homelessness == "Y")
+cities_without_missing_data <- subset(data, missing_homelessness == "N")
+
+# Create the bar plot
+barplot(table(data$missing_homelessness), main = "Distribution of Missingness of Data", col = c("gray70", "gray90"))
+
+# Add the legend with specific coordinates
+legend("topleft", legend = c("Y = missing", "N = present"), fill = c("gray70", "gray90"))
+
+
+# Run the Wilcoxon rank-sum test (Mann-Whitney U test)
+wilcox_test_result <- wilcox.test(cities_with_missing_data$below_fpl_pct, cities_without_missing_data$below_fpl_pct)
+
+# Print the result
+print(wilcox_test_result)
+
+# Create the boxplot
+ggplot(data, aes(x = missing_homelessness, y = below_fpl_pct)) +
+  geom_boxplot() +
+  labs(x = "Missing Data for Homeless People", y = "Below FPL Percentage") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ggtitle("Below FPL Percentage by Missing Data for Homeless People")
+```
+
